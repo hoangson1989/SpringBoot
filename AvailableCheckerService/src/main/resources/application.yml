@@ -1,0 +1,90 @@
+server:
+  port: 8082
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/acs
+  json:
+    value:
+      default:
+        type
+  application:
+    name: AvailabilityCheckService
+  config:
+    import: configserver:http://localhost:8888
+
+  cloud:
+    config:
+      discovery:
+        enabled: true
+      name: Availability-Check-Service
+    function:
+      definition: newDataConsumer;unavailableDataConsumer;freeDataConsumer
+    stream:
+      bindings:
+        newDataConsumer-in-0:
+          destination: ${app.kafka.new-destination}
+        unavailableDataConsumer-in-0:
+          destination: ${app.kafka.unavailable-destination}
+        freeDataConsumer-in-0:
+          destination: ${app.kafka.success-destination}
+
+      kafka:
+        binder:
+          brokers: 157.230.200.212:9092
+          consumer-properties:
+            client.id: ACS
+            #earliest: automatically reset the offset to the earliest offset
+            #latest: automatically reset the offset to the latest offset
+            auto.offset.reset: earliest
+            group.instance.id: instance
+            auto.commit.interval.ms: 500
+          required-acks: 1
+          configuration:
+            key.deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value.deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+#        bindings:
+#          newDataConsumer-in-0:
+#            consumer:
+#              ack-mode: manual
+#              enable-dlq: true
+#              dlq-name: DLQ.input-data
+#          unavailableDataConsumer-in-0:
+#            consumer:
+#              ack-mode: manual
+#              enable-dlq: true
+#              dlq-name: DLQ.input-data
+#          freeDataConsumer-in-0:
+#            consumer:
+#              ack-mode: manual
+#              enable-dlq: true
+#              dlq-name: DLQ.input-data
+  kafka:
+    admin:
+      client-id: ACS
+app:
+  kafka:
+    new-destination: newAPI
+    failed-destination: uncertainAPI
+    success-destination: freeAPI
+    unavailable-destination: unavailableAPI
+  api:
+    test:
+      successful-http-statuses: 200,201,202,203,204
+      unauthorized-http-statuses: 401,403
+  key-extraction:
+    scraping-depth-level: 2
+
+logging:
+  level:
+    "org.apache.kafka.clients.admin.AdminClientConfig": WARN
+    "org.apache.kafka.clients.consumer.ConsumerConfig": WARN
+    "org.apache.kafka.clients.producer.ProducerConfig": WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - "*"
